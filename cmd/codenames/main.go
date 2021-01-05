@@ -12,16 +12,14 @@ import (
 )
 
 const defaultListenAddr = ":9091"
-const expiryDur = -24 * time.Hour
 
 func main() {
 	rand.Seed(time.Now().UnixNano())
 
-	var listenAddr string
-	log.Printf("[STARTUP] Listening on addr %s\n", listenAddr)
+	log.Printf("[STARTUP] Listening on addr %s\n", defaultListenAddr)
 	server := &codenames.Server{
 		Server: http.Server{
-			Addr: listenAddr,
+			Addr: defaultListenAddr,
 		},
 	}
 	if err := server.Start(nil); err != nil {

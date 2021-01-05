@@ -24,3 +24,7 @@ _testmain.go
 *.prof
 
 db
+
+node_modules
+package-lock.json
+*/package-lock.json

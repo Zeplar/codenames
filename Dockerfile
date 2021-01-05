@@ -2,8 +2,7 @@
 FROM golang:1.14-alpine as backend
 WORKDIR /app
 COPY . .
-RUN apk add gcc musl-dev \
-    && go build ./cmd/codenames/main.go
+RUN go build ./cmd/codenames/main.go
 
 # Build frontend.
 FROM node:12-alpine as frontend
