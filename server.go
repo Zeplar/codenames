@@ -394,12 +394,6 @@ func (s *Server) Start(games map[string]*Game) error {
 		s.Store = discardStore{}
 	}
 
-	if games != nil {
-		for _, g := range games {
-			s.games[g.ID] = newHandle(g, s.Store)
-		}
-	}
-
 	go func() {
 		for range time.Tick(10 * time.Minute) {
 			s.cleanupOldGames()
