@@ -7,8 +7,6 @@ import (
 	"io"
 	"log"
 	"net/http"
-	"net/http/pprof"
-	"os"
 	"sort"
 	"strings"
 	"sync"
@@ -322,13 +320,6 @@ func (s *Server) handleStats(rw http.ResponseWriter, req *http.Request) {
 	})
 }
 
-func (s *Server) handleCheckpoint(rw http.ResponseWriter, req *http.Request) {
-	err := s.Store.Checkpoint(rw)
-	if err != nil {
-		log.Printf("[ERROR] Write checkpoint %s\n", err)
-	}
-}
-
 func (s *Server) cleanupOldGames() {
 	s.mu.Lock()
 	defer s.mu.Unlock()
@@ -368,17 +359,6 @@ func (s *Server) Start(games map[string]*Game) error {
 	s.mux.Handle("/static/", http.StripPrefix("/static/", http.FileServer(http.Dir("frontend/dist"))))
 	s.mux.HandleFunc("/", s.handleIndex)
 
-	bootstrapPW := os.Getenv("BOOTSTRAPPW")
-	// If no bootstrap PW is set, don't expose the checkpoint endpoint so we
-	// don't default to open.
-	if bootstrapPW != "" {
-		log.Printf("/checkpoint endpoint enabled\n")
-		s.mux.Handle("/checkpoint", basicAuth(
-			http.HandlerFunc(s.handleCheckpoint),
-			os.Getenv("BOOTSTRAPPW"),
-			"admin"))
-	}
-
 	gameIDs = dictionary.Filter(gameIDs, func(s string) bool { return len(s) >= 3 })
 	s.gameIDWords = gameIDs.Words()
 	for i, w := range s.gameIDWords {
@@ -388,7 +368,7 @@ func (s *Server) Start(games map[string]*Game) error {
 	s.games = make(map[string]*GameHandle)
 	s.defaultWords = d.Words()
 	sort.Strings(s.defaultWords)
-	s.Server.Handler = withPProfHandler(s)
+	s.Server.Handler = s
 
 	if s.Store == nil {
 		s.Store = discardStore{}
@@ -409,24 +389,6 @@ func (s *Server) ServeHTTP(rw http.ResponseWriter, req *http.Request) {
 	defer func() { atomic.AddInt64(&s.statOpenRequests, -1) }()
 
 	s.mux.ServeHTTP(rw, req)
-}
-
-func withPProfHandler(next http.Handler) http.Handler {
-	mux := http.NewServeMux()
-	mux.HandleFunc("/debug/pprof/", pprof.Index)
-	mux.HandleFunc("/debug/pprof/cmdline", pprof.Cmdline)
-	mux.HandleFunc("/debug/pprof/profile", pprof.Profile)
-	mux.HandleFunc("/debug/pprof/symbol", pprof.Symbol)
-	mux.HandleFunc("/debug/pprof/trace", pprof.Trace)
-	pprofHandler := basicAuth(mux, os.Getenv("PPROFPW"), "admin")
-
-	return http.HandlerFunc(func(rw http.ResponseWriter, req *http.Request) {
-		if strings.HasPrefix(req.URL.Path, "/debug/pprof") {
-			pprofHandler.ServeHTTP(rw, req)
-			return
-		}
-		next.ServeHTTP(rw, req)
-	})
 }
 
 func basicAuth(handler http.Handler, password, realm string) http.Handler {
