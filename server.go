@@ -357,6 +357,7 @@ func (s *Server) Start(games map[string]*Game) error {
 	s.mux.HandleFunc("/guess", s.handleGuess)
 	s.mux.HandleFunc("/game-state", s.handleGameState)
 	s.mux.Handle("/static/", http.StripPrefix("/static/", http.FileServer(http.Dir("frontend/dist"))))
+	s.mux.Handle("/assets/", http.StripPrefix("/assets/", http.FileServer(http.Dir("assets/images"))))
 	s.mux.HandleFunc("/", s.handleIndex)
 
 	gameIDs = dictionary.Filter(gameIDs, func(s string) bool { return len(s) >= 3 })
